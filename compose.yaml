@@ -1,0 +1,39 @@
+name: rehabilitacare
+
+services:
+  api:
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:${REABILITACARE_API_PORT:-8080}:8080"
+    environment:
+      SERVER_PORT: "8080"
+      DATABASE_URL: jdbc:postgresql://database:5432/${POSTGRES_DB:?Configure POSTGRES_DB}
+      DATABASE_USERNAME: ${APP_DB_USER:?Configure APP_DB_USER}
+      DATABASE_PASSWORD: ${APP_DB_PASSWORD:?Configure APP_DB_PASSWORD}
+      ACCESS_TOKEN_SECRET_BASE64: ${ACCESS_TOKEN_SECRET_BASE64:?Configure ACCESS_TOKEN_SECRET_BASE64}
+      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Configure POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_BOOTSTRAP_USER:?Configure POSTGRES_BOOTSTRAP_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_BOOTSTRAP_PASSWORD:?Configure POSTGRES_BOOTSTRAP_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:?Configure APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Configure APP_DB_PASSWORD}
+    volumes:
+      - rehabilitacare_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-app-user.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rehabilitacare_postgres_data:
+    name: rehabilitacare_postgres_data
