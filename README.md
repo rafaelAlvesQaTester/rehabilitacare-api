@@ -198,6 +198,10 @@ Cada resposta inclui `X-Correlation-ID`. Um identificador recebido só é aceito
 
 `GET /actuator/health` continua público. `GET /actuator/prometheus` expõe métricas JVM e HTTP e exige JWT válido; os demais endpoints Actuator permanecem fechados. Não há usuário ou token dedicado para scraping nesta versão. Mantenha a coleta em rede privada e não publique o endpoint diretamente. Os SLOs iniciais, suas fórmulas e limitações estão em [Observabilidade e SLO](docs/observabilidade.md); são metas, não resultados medidos.
 
+## Desempenho
+
+Os cenários k6 locais, metodologia e resultados medidos estão em [Testes de desempenho](docs/desempenho.md). Os scripts ficam em `tests/performance/`: smoke de 30 segundos e SLO local de 5 minutos. São testes de leitura, exigem token de uma conta fictícia isolada e não devem ser executados contra produção. A documentação separa evidências locais de resultados de CI; nenhum resultado de produção é declarado.
+
 ## Testes, compilação e cobertura
 
 ```powershell
