@@ -2,6 +2,125 @@
 
 API REST para apoiar cuidadores familiares e profissionais. A API permite criar uma conta, entrar, consultar os próprios dados, cadastrar pacientes e registrar e consultar o histórico de cuidados de pacientes vinculados ao cuidador autenticado.
 
+## Tecnologias utilizadas
+
+<div align="center">
+
+**Backend e segurança**
+
+![Java 21](https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
+
+**Persistência e infraestrutura**
+
+![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL_17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=hibernate&logoColor=white)
+![Flyway](https://img.shields.io/badge/Flyway-CC0200?style=for-the-badge&logo=flyway&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Apache Maven](https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)
+
+**Testes, documentação e automação**
+
+![JUnit 5](https://img.shields.io/badge/JUnit_5-25A162?style=for-the-badge&logo=junit5&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![OpenAPI](https://img.shields.io/badge/OpenAPI-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white)
+![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)
+![Postman](https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
+![k6](https://img.shields.io/badge/k6-7D64FF?style=for-the-badge&logo=k6&logoColor=white)
+
+</div>
+
+Os ícones são carregados pelo serviço [Shields.io](https://shields.io/) quando o README é exibido on-line.
+
+## Arquitetura e diagramas
+
+O ReabilitaCare utiliza um **monólito modular**, organizado pelas funcionalidades de autenticação, pacientes e registros de cuidados. Os diagramas abaixo representam a arquitetura lógica, o fluxo principal da demonstração e os relacionamentos centrais do banco de dados.
+
+### Arquitetura da aplicação
+
+```mermaid
+flowchart TD
+    CLIENT["Postman / Cliente HTTP"]
+    API["ReabilitaCare API<br/>Java 21 + Spring Boot"]
+    SECURITY["Spring Security<br/>Autenticação JWT"]
+    AUTH["Autenticação"]
+    PATIENT["Pacientes"]
+    CARE["Registros de cuidados"]
+    JPA["Spring Data JPA / Hibernate"]
+    DB[("PostgreSQL 17")]
+    FLYWAY["Flyway / Migrations"]
+
+    CLIENT --> API
+    API --> SECURITY
+    API --> AUTH
+    API --> PATIENT
+    API --> CARE
+    AUTH --> JPA
+    PATIENT --> JPA
+    CARE --> JPA
+    JPA --> DB
+    FLYWAY --> DB
+```
+
+### Fluxo principal da demonstração
+
+```mermaid
+flowchart TD
+    START([Início])
+    REGISTER["Cadastrar cuidador"]
+    LOGIN["Login e obtenção do JWT"]
+    ME["Consultar cuidador autenticado"]
+    PATIENT["Cadastrar paciente"]
+    CARE["Registrar cuidado"]
+    HISTORY["Consultar histórico do paciente"]
+    END([Fim])
+
+    START --> REGISTER --> LOGIN --> ME --> PATIENT --> CARE --> HISTORY --> END
+```
+
+Um cuidado pode ser registrado como `REALIZADO` ou `NAO_REALIZADO`; no segundo caso, uma justificativa é obrigatória. A consulta de histórico exige que o paciente pertença ao cuidador autenticado.
+
+### Modelo de dados simplificado
+
+```mermaid
+erDiagram
+    CAREGIVERS ||--o{ PATIENTS : responsavel
+    CAREGIVERS ||--o{ CARE_RECORDS : registra
+    PATIENTS ||--o{ CARE_RECORDS : possui
+
+    CAREGIVERS {
+        UUID id PK
+        VARCHAR nome
+        VARCHAR email UK
+        VARCHAR senha_hash
+        VARCHAR tipo_vinculo
+    }
+
+    PATIENTS {
+        UUID id PK
+        VARCHAR nome
+        DATE data_nascimento
+        VARCHAR tipo_condicao
+        UUID cuidador_responsavel_id FK
+    }
+
+    CARE_RECORDS {
+        UUID id PK
+        UUID patient_id FK
+        UUID caregiver_id FK
+        VARCHAR care_type
+        VARCHAR status
+        TIMESTAMPTZ occurred_at
+        TIMESTAMPTZ recorded_at
+    }
+```
+
+Os campos exibidos representam os principais atributos para compreender as relações, não todas as colunas das tabelas. As regras detalhadas estão nas migrations e na documentação das [decisões arquiteturais](docs/adr/0001-monolito-por-funcionalidade.md).
+
+---
+
 ## Requisitos
 
 - JDK 21
@@ -201,6 +320,26 @@ Cada resposta inclui `X-Correlation-ID`. Um identificador recebido só é aceito
 ## Desempenho
 
 Os cenários k6 locais, metodologia e resultados medidos estão em [Testes de desempenho](docs/desempenho.md). Os scripts ficam em `tests/performance/`: smoke de 30 segundos e SLO local de 5 minutos. São testes de leitura, exigem token de uma conta fictícia isolada e não devem ser executados contra produção. A documentação separa evidências locais de resultados de CI; nenhum resultado de produção é declarado.
+
+
+## Demonstração com Postman
+
+A Collection Postman v2.1 está em [`tests/postman/reabilitacare.postman_collection.json`](tests/postman/reabilitacare.postman_collection.json). Com a API disponível em `http://127.0.0.1:8080`, importe o arquivo no Postman em **Import** e execute **Run collection** com uma iteração, mantendo a ordem das seis requisições:
+
+1. Cadastro de cuidador (`POST /api/v1/auth/register`).
+2. Login (`POST /api/v1/auth/login`).
+3. Consulta da conta (`GET /api/v1/auth/me`).
+4. Cadastro de paciente (`POST /api/v1/patients`).
+5. Registro de cuidado (`POST /api/v1/patients/{patientId}/care-records`).
+6. Consulta do histórico (`GET /api/v1/patients/{patientId}/care-records`).
+
+A Collection gera dados fictícios, usa somente **variáveis da própria Collection** (`baseUrl`, `email`, `senha`, `token`, `patientId`, `recordId` e `occurredAt`) e captura automaticamente os identificadores e o JWT. Os testes conferem os status HTTP e a presença do registro criado no histórico. Não execute a demonstração com dados reais nem compartilhe tokens de acesso.
+
+Opcionalmente, com o Newman instalado, execute na raiz do projeto:
+
+```powershell
+newman run tests/postman/rehabilitacare.postman_collection.json
+```
 
 ## Testes, compilação e cobertura
 
